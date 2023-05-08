@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+from sklearn.preprocessing import MinMaxScaler
+import pickle
 
 class SalesDataset(Dataset):
     def __init__(self, csv_file, timesteps, use_last_k = -1, normalize=True, normalization_stats = None):
@@ -15,7 +17,11 @@ class SalesDataset(Dataset):
                 self.mean, self.std = normalization_stats
             else:
                 self.mean, self.std = self.sales_df['sales'].mean(), self.sales_df['sales'].std()
-            self.sales_df['sales'] = (self.sales_df['sales'] - self.mean) / self.std
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            self.sales_df['sales'] = scaler.fit_transform(self.sales_df['sales'].to_numpy().reshape(-1,1))
+            with open('scaler.pkl', 'wb') as f:
+                pickle.dump(scaler, f)
+
         if use_last_k > 0:
             self.sales_df = self.sales_df.iloc[-use_last_k * self.rows_per_timestep:]
 

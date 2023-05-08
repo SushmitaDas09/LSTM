@@ -3,6 +3,7 @@ import torch
 from lstm_model import LSTMModel
 from dataloader import SalesDataset
 import pandas as pd
+import pickle
 
 if __name__ == "__main__":
     timesteps = 30
@@ -21,7 +22,10 @@ if __name__ == "__main__":
     num_preds = test_arr.shape[0]
 
     # timesteps, n_stores, n_families -> 30, n_stores * n_families
-    sales = (train_arr[-timesteps:, :, :, 0] - mean) / std
+    #sales = (train_arr[-timesteps:, :, :, 0] - mean) / std
+    with open('scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)    
+    sales = scaler.transform(train_arr[-timesteps:, :, :, 0])
     sales = sales.reshape((timesteps, num_stores, num_families))
     onpromotion = np.concatenate((train_arr[-timesteps+1:, :, :, 1], test_arr))
     onpromotion = onpromotion.reshape((timesteps - 1 + num_preds, num_stores, num_families))
@@ -39,10 +43,11 @@ if __name__ == "__main__":
         out = out.detach().cpu().numpy()
 
         predictions.append(out)
-        sales = np.concatenate((sales[:-1], out.reshape((1, num_stores, num_families))), axis = 0)
+        sales = np.concatenate((sales[1:], out.reshape((1, num_stores, num_families))), axis = 0)
     
     predictions = np.array(predictions).flatten()
-    predictions = mean + (predictions * std)
+    #predictions = mean + (predictions * std)
+    predictions = scaler.inverse_transform(predictions)
     test_df["sales"] = np.clip(predictions, a_min=0, a_max=None)
     test_df = test_df[["id", "sales"]]
     test_df.to_csv("lstm_30_10_epochs.csv", index=False)
