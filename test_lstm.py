@@ -23,10 +23,10 @@ def test(train_df, test_df, model: Union[torch.nn.Module, str]):
     onpromotion = onpromotion.reshape((timesteps - 1 + num_preds, num_stores, num_families))
 
     if isinstance(model, str):
-        model = LSTMModel(input_size=(num_stores * num_families * 2), hidden_size = 512, output_size=num_stores * num_families)
+        model = LSTMModel(input_size=(num_stores * num_families * 2), hidden_size = 64, output_size=num_stores * num_families)
         model.load_state_dict(torch.load(model))
-    h = torch.zeros(1, 1, 512)
-    c = torch.zeros(1, 1, 512)
+    h = torch.zeros(1, 1, 64)
+    c = torch.zeros(1, 1, 64)
     predictions = []
     for i in range(num_preds):
         sales_i = np.expand_dims(sales, axis=3)

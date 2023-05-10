@@ -12,13 +12,13 @@ import pandas as pd
 def rmsle_loss(y_pred, y_true):
     return torch.sqrt(torch.mean((torch.log(1 + y_pred) - torch.log(1 + y_true)) ** 2))
 
-def train(sales_df, max_epochs, log_dir, min_epochs = 3):
+def train(sales_df, max_epochs, log_dir, min_epochs = 1):
     ts_data = SalesDataset(sales_df, timesteps=60)
     # pd.DataFrame({"mean": [ts_data.mean], "std": [ts_data.std]}).to_csv("train_sales_stats.csv")
     
     x_shape, y_shape = ts_data[0][0].shape, ts_data[0][1].shape
     _, in_feats = x_shape
-    model = LSTMModel(input_size=in_feats, hidden_size=512, output_size=y_shape[0])
+    model = LSTMModel(input_size=in_feats, hidden_size=64, output_size=y_shape[0])
 
     train_size = int(0.9 * len(ts_data))
     val_size = len(ts_data) - train_size
@@ -27,8 +27,8 @@ def train(sales_df, max_epochs, log_dir, min_epochs = 3):
     train_dataset, val_dataset = random_split(ts_data, [train_size, val_size])
 
     # Create your PyTorch dataloaders for train and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=256, shuffle=False)
 
 
     # Define your model and loss function
@@ -79,28 +79,31 @@ def train(sales_df, max_epochs, log_dir, min_epochs = 3):
 
 train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
+stores = train_data['store_nbr'].unique()
 families = train_data['family'].unique()
+stores.sort()
 families.sort()
-model_root_dir = "family_models"
+model_root_dir = "store_family_models"
 result_df_list = []
 avg_val_list = []
-for fid, family in enumerate(families):
-    print(f"{family} {fid+1}/{len(families)}")
-    filtered_train_data = train_data[train_data['family']==family]
-    filtered_train_data = filtered_train_data.sort_values(by = ['date','store_nbr'])
-    filtered_test_data = test_data[test_data['family']==family]
-    filtered_test_data = filtered_test_data.sort_values(by = ['date','store_nbr'])
-    # target_scaler = MinMaxScaler()
-    # target_scaler.fit(train_data['sales'].values.reshape(-1, 1))
-    # y_train_norm= target_scaler.transform(train_data['sales'].values.reshape(-1, 1))
+for sid, store in enumerate(stores):
+    for fid, family in enumerate(families):
+        print(f"{store} {sid+1}/{len(stores)}, {family} {fid+1}/{len(families)}")
+        filtered_train_data = train_data[(train_data['store_nbr']==store) & (train_data['family']==family)]
+        filtered_train_data = filtered_train_data.sort_values(by = ['date'])
+        filtered_test_data = test_data[(test_data['store_nbr']==store) & (test_data['family']==family)]
+        filtered_test_data = filtered_test_data.sort_values(by = ['date'])
+        # target_scaler = MinMaxScaler()
+        # target_scaler.fit(train_data['sales'].values.reshape(-1, 1))
+        # y_train_norm= target_scaler.transform(train_data['sales'].values.reshape(-1, 1))
 
-    # y_pred = target_scaler.inverse_transform(train_data['normalized_sales'].values.reshape(-1,1))
-    
-    model, val_loss = train(filtered_train_data, 10, os.path.join(model_root_dir, family))
-    avg_val_list.append(val_loss)
-    results = test(filtered_train_data, filtered_test_data, model)
-    result_df_list.append(results)
+        # y_pred = target_scaler.inverse_transform(train_data['normalized_sales'].values.reshape(-1,1))
+        
+        model, val_loss = train(filtered_train_data, 1, os.path.join(model_root_dir, str(store) + "_" + family))
+        avg_val_list.append(val_loss)
+        results = test(filtered_train_data, filtered_test_data, model)
+        result_df_list.append(results)
 result_df = pd.concat(result_df_list, axis=0)
 result_df = result_df[["id", "sales"]]
-result_df.to_csv("family_lstm_submission.csv", index=False)
+result_df.to_csv("store_family_lstm_submission.csv", index=False)
 print("Average val loss", np.mean(avg_val_list))
