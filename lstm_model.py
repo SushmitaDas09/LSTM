@@ -9,7 +9,11 @@ class LSTMModel(nn.Module):
         self.output_size = output_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers=num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
+        self.fc = nn.Sequential(nn.Linear(hidden_size, hidden_size),
+                                nn.LeakyReLU(),
+                                nn.Linear(hidden_size, hidden_size),
+                                nn.LeakyReLU(),
+                                nn.Linear(hidden_size, output_size))
 
     def forward(self, x):
         # Set initial hidden and cell states
