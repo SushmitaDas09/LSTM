@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import copy
 
 class SalesDataset(Dataset):
-    def __init__(self, csv_file, timesteps, use_last_k = -1):
-        self.sales_df = pd.read_csv(csv_file)
+    def __init__(self, sales_df, timesteps, use_last_k = -1):
+        self.sales_df = copy.deepcopy(sales_df)
         self.timesteps = timesteps
         self.num_stores = len(self.sales_df['store_nbr'].unique())
         self.num_families = len(self.sales_df['family'].unique())
