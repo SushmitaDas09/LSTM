@@ -24,4 +24,5 @@ class LSTMModel(nn.Module):
         
         # Decode the hidden state of the last time step
         out = self.fc(out[:, -1, :])
+        out = torch.abs(out)
         return out, hidden
